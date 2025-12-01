@@ -22,7 +22,7 @@ df_filtered = df_ratings[
 ].copy()
 
 # Ograniczenie próbki ocen żeby komputer nie wybuchł
-df_sample = df_filtered.sample(n=25000, random_state=42)
+df_sample = df_filtered.sample(n=35000, random_state=42)
 
 # Konwersja do formatu Surprise
 reader = Reader(rating_scale=(0.5, 5.0))
@@ -97,10 +97,35 @@ if time_svd < time_knn:
 else:
     print("Wnioski: Algorytm kNN był szybszy w obliczeniach.")
 
-# Przykład rekomendacji
 trainset = data.build_full_trainset()
-best_svd.fit(trainset)
+best_knn.fit(trainset)
 
-# Przykładowa predykcja dla Usera 1 i Filmu 50
-pred = best_svd.predict(uid=1, iid=50)
-print(f"Przykładowa predykcja SVD (User 1, Film 50): {pred.est}")
+
+def find_and_recommend(czesc_tytulu, model, trainset, df_movies, n=3):
+    found = df_movies[df_movies['title'].str.contains(czesc_tytulu, case=False, na=False)]
+
+    if found.empty:
+        print(f"\n[!] Błąd: Nie znaleziono filmu o nazwie zawierającej '{czesc_tytulu}' w pliku movies.csv")
+        return
+    movie_id = found.iloc[0]['movieId']
+    movie_title = found.iloc[0]['title']
+    try:
+        inner_id = trainset.to_inner_iid(movie_id)
+    except ValueError:
+        # Jeśli film został wycięty przez .sample()
+        print(f"Film nie trafił do wylosowanej próbki")
+        return
+
+    neighbors_ids = model.get_neighbors(inner_id, k=n)
+
+    # Zamiana ID sąsiadów z powrotem na tytuły
+    print(f"Filmy podobne (wg algorytmu kNN):")
+    for neighbor_inner_id in neighbors_ids:
+        neighbor_raw_id = trainset.to_raw_iid(neighbor_inner_id)
+        neighbor_title = df_movies[df_movies['movieId'] == neighbor_raw_id]['title'].values[0]
+        print(f" {neighbor_title}")
+
+
+find_and_recommend('Jumanji', best_knn, trainset, df_movies)
+find_and_recommend('Flint', best_knn, trainset, df_movies)
+
