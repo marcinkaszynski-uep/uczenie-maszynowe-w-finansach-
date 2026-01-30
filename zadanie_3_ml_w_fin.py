@@ -97,4 +97,4 @@ stats = bt.run()
 print("Wyniki:")
 print(stats)
 # wykresik
-bt.plot(open_browser=False)
+bt.plot(open_browser=True)
